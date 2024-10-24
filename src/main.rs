@@ -1,4 +1,4 @@
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, middleware::Logger};
 use sqlx::sqlite::SqlitePool;
 use serde::{Deserialize, Serialize};
 
@@ -46,15 +46,21 @@ async fn insert_test_data(pool: web::Data<SqlitePool>, tx: web::Json<Tx>) -> imp
     }
 }
 
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let pool = SqlitePool::connect("sqlite://my_database.db").await.unwrap();
+
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+
 
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(pool.clone()))
             .service(hello)
             .service(echo)            
+            .wrap(Logger::default())
+            // .wrap(Logger::new("%a %{User-Agent}i"))
             .route("/tx", web::get().to(get_transaction))
             .route("/tx", web::post().to(insert_test_data))
             .route("/hey", web::get().to(manual_hello))
